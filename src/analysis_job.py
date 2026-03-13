@@ -1,3 +1,22 @@
+"""
+Spatio-Temporal Dispatch Analysis: 
+We will identify daily peak traffic hours through hourly aggregation, 
+filtering trip records to map ride volume distributions across different dispatching bases. 
+This will allow us to visualize how service demand shifts between providers during high-traffic intervals.
+
+Economic Performance (Monthly Revenue): 
+We will aggregate total fares, tips to calculate the monthly gross revenue, allowing us to correlate financial performance with seasonal events.
+
+Economic Fare Breakdown and Compensation Analysis: We will analyze the relationship between the base_passenger_fare and actual driver_pay across different High-Volume For-Hire Vehicle (HVFHV) platforms (e.g., Uber and Lyft). By aggregating these financial metrics alongside time and distance data, we aim to evaluate effective platform commission trends and assess how regulatory levies—such as the NYS congestion_surcharge and the 2025 cbd_congestion_fee—impact the final passenger cost versus actual driver earnings.
+
+Process congestion surcharge data to identify geographic zones with the highest fee accumulations. 
+(Focuses on processing specific columns to identify threshold/maximum values).
+
+To map trip origins and destinations to reveal high-traffic zones, 
+underserved areas, and opportunities for infrastructure improvements.
+
+(Extract trip duration and location features to identify anomalous rides. (Focuses on feature extraction to find outliers, such as unusually long trips or data errors) -Need your feedback on this.
+"""
 # Main Spark/MapReduce logic
 # src/analysis_job.py
 import time
