@@ -94,10 +94,11 @@ The project expects data to be located in the `data/` directory.
     ./scripts/run_benchmark.sh
     ```
 
-## deployment
+## Deployment
 
-To deploy the application to a cluster, use the deployment script:
+To deploy the application to a cluster, ensure the script is executable and run it:
 ```bash
+chmod +x scripts/deploy.sh
 ./scripts/deploy.sh
 ```
 
