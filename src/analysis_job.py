@@ -18,118 +18,96 @@ underserved areas, and opportunities for infrastructure improvements.
 (Extract trip duration and location features to identify anomalous rides. (Focuses on feature extraction to find outliers, such as unusually long trips or data errors) -Need your feedback on this.
 """
 # Main Spark/MapReduce logic
-import sys
+# src/analysis_job.py
 import time
+import argparse
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, hour, month, sum as _sum, avg
+from pyspark.sql import functions as F
+import logging
 
-def main():
-    if len(sys.argv) != 2:
-        print("Usage: spark-submit taxi_analysis.py <hdfs_data_path>")
-        sys.exit(1)
-        
-    data_path = sys.argv[1]
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-    spark = SparkSession.builder \
-        .appName("NYC_Taxi_Scalability_Analysis") \
-        .getOrCreate()
+def create_spark_session(app_name="DataEngProject", executor_memory="2g", cores=2):
+    return (SparkSession.builder
+        .appName(app_name)
+        .config("spark.executor.memory", executor_memory)
+        .config("spark.executor.cores", str(cores))
+        .config("spark.sql.shuffle.partitions", "100")
+        .config("spark.eventLog.enabled", "true")
+        .getOrCreate())
 
-    spark.sparkContext.setLogLevel("ERROR")
-    print(f"Loading data from: {data_path}")
-    
-    # ==========================================
-    # START TIMER
-    # ==========================================
-    start_time = time.time()
+def load_data(spark, input_path, file_format="csv"):
+    logger.info(f"Loading data from: {input_path}")
+    if file_format == "csv":
+        return spark.read.csv(input_path, header=True, inferSchema=True)
+    elif file_format == "json":
+        return spark.read.json(input_path)
+    elif file_format == "parquet":
+        return spark.read.parquet(input_path)
+    else:
+        raise ValueError(f"Unsupported format: {file_format}")
 
-    df = spark.read.parquet(data_path)  ##PARQUET
-    
-    # ------------------------------------------
-    # OBJECTIVE 1: Spatio-Temporal Dispatch Analysis
-    # ------------------------------------------
-    print("\n[1/6] Executing Spatio-Temporal Dispatch Analysis...")
-    peak_hours = df.groupBy(hour("pickup_datetime").alias("hour"), "hvfhs_license_num") \
-                   .count() \
-                   .orderBy("hour", ascending=False)
-    peak_hours.show(5)
-
-    # ------------------------------------------
-    # OBJECTIVE 2: Economic Performance (Monthly Revenue)
-    # ------------------------------------------
-    print("[2/6] Executing Monthly Revenue Analysis...")
-    # Aggregating fares and tips to calculate gross revenue by month
-    monthly_revenue = df.withColumn("month", month("pickup_datetime")) \
-                        .groupBy("month") \
-                        .agg(
-                            _sum(col("base_passenger_fare") + col("tips")).alias("monthly_gross_revenue")
-                        ).orderBy("month")
-    monthly_revenue.show(5)
-
-    # ------------------------------------------
-    # OBJECTIVE 3: Economic Fare Breakdown & Compensation
-    # ------------------------------------------
-    print("[3/6] Executing Fare Breakdown & Driver Compensation...")
-    # Analyzing platform cuts and the impact of congestion surcharges
-    # Note: Ensure 'cbd_congestion_fee' exists in your schema or handle its absence
-    compensation = df.filter(col("base_passenger_fare") > 0) \
-                     .groupBy("hvfhs_license_num") \
-                     .agg(
-                         _sum("base_passenger_fare").alias("total_base_fare"),
-                         _sum("driver_pay").alias("total_driver_payout"),
-                         _sum("congestion_surcharge").alias("total_congestion_levies")
-                     )
-    compensation.show(5)
-
-    # ------------------------------------------
-    # OBJECTIVE 4: Geographic Congestion Mapping
-    # ------------------------------------------
-    print("[4/6] Executing Geographic Congestion Mapping...")
-    # Identifying which Pick-Up Location IDs (zones) accumulate the most congestion fees
-    congestion_zones = df.groupBy("PULocationID") \
-                         .agg(_sum("congestion_surcharge").alias("total_zone_surcharge")) \
-                         .orderBy(col("total_zone_surcharge").desc())
-    congestion_zones.show(5)
-
-    # ------------------------------------------
-    # OBJECTIVE 5: Trip Origin-Destination User Analysis
-    # ------------------------------------------
-    print("[5/6] Executing High-Traffic Zone Analysis...")
-    # Map trip origins and destinations to reveal high-traffic zones
-    traffic_analysis = df.groupBy("PULocationID", "DOLocationID") \
-                         .count() \
-                         .orderBy(col("count").desc())
-    traffic_analysis.show(5)
-
-    # ------------------------------------------
-    # OBJECTIVE 6: Outlier Detection via Spark SQL
-    # ------------------------------------------
-    print("[6/6] Executing Spark SQL Anomaly Detection...")
-    df.createOrReplaceTempView("taxi_data")
-    outlier_query = """
-        SELECT hvfhs_license_num, pickup_datetime, trip_miles, trip_time, base_passenger_fare, driver_pay
-        FROM taxi_data
-        WHERE base_passenger_fare < 0 
-           OR trip_time > 18000 
-           OR (trip_miles = 0 AND base_passenger_fare > 50)
+def run_analysis(df):
     """
+    Core analysis logic — adapt this to your dataset.
+    Example: NYC Taxi — avg fare by hour and passenger count.
+    """
+    # HVFHV Schema adaptation: 
+    # - tpep_pickup_datetime -> pickup_datetime
+    # - fare_amount -> base_passenger_fare
+    # - trip_distance -> trip_miles
+    # - passenger_count does not exist in standard HVFHV data
+    return (df
+        .filter(F.col("base_passenger_fare") > 0)
+        .withColumn("hour", F.hour(F.col("pickup_datetime")))
+        .groupBy("hour")
+        .agg(
+            F.count("*").alias("trip_count"),
+            F.avg("base_passenger_fare").alias("avg_fare"),
+            F.avg("trip_miles").alias("avg_distance")
+        )
+        .orderBy("hour"))
 
+def convert_to_parquet(spark, input_path, output_path):
+    """Optional: Convert CSV/JSON to Parquet for faster subsequent reads."""
+    logger.info("Converting to Parquet...")
+    df = spark.read.csv(input_path, header=True, inferSchema=True)
+    df.write.mode("overwrite").parquet(output_path)
+    logger.info(f"Saved Parquet to {output_path}")
 
-    outliers = spark.sql(outlier_query)
-    outliers.show(5)
+def benchmark(spark, input_path, output_path, file_format):
+    start = time.time()
 
+    df = load_data(spark, input_path, file_format)
+    record_count = df.count()
+    logger.info(f"Loaded {record_count:,} records")
 
-    # ==========================================
-    # STOP TIMER
-    # ==========================================
-    end_time = time.time()
-    execution_time = end_time - start_time
+    result = run_analysis(df)
+    result.write.mode("overwrite").csv(output_path, header=True)
 
-    print("\n==========================================")
-    print(f"EXPERIMENT COMPLETE")
-    print(f"TOTAL EXECUTION TIME: {execution_time:.2f} seconds")
-    print("==========================================\n")
-
-    spark.stop()
+    elapsed = time.time() - start
+    logger.info(f"Job completed in {elapsed:.2f} seconds")
+    logger.info(f"Records processed: {record_count:,}")
+    return elapsed, record_count
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input",   required=True,  help="HDFS input path")
+    parser.add_argument("--output",  required=True,  help="HDFS output path")
+    parser.add_argument("--format",  default="csv",  help="csv | json | parquet")
+    parser.add_argument("--cores",   default=2, type=int)
+    parser.add_argument("--memory",  default="2g")
+    args = parser.parse_args()
+
+    spark = create_spark_session(executor_memory=args.memory, cores=args.cores)
+    elapsed, count = benchmark(spark, args.input, args.output, args.format)
+
+    # Print summary for easy log scraping
+    print(f"\n{'='*40}")
+    print(f"BENCHMARK RESULT")
+    print(f"  Time      : {elapsed:.2f}s")
+    print(f"  Records   : {count:,}")
+    print(f"  Cores/node: {args.cores}")
+    print(f"{'='*40}\n")
+    spark.stop()
