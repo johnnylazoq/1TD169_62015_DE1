@@ -34,15 +34,19 @@ def run_analysis(df):
     Core analysis logic — adapt this to your dataset.
     Example: NYC Taxi — avg fare by hour and passenger count.
     """
+    # HVFHV Schema adaptation: 
+    # - tpep_pickup_datetime -> pickup_datetime
+    # - fare_amount -> base_passenger_fare
+    # - trip_distance -> trip_miles
+    # - passenger_count does not exist in standard HVFHV data
     return (df
-        .filter(F.col("passenger_count") > 0)
-        .filter(F.col("fare_amount") > 0)
-        .withColumn("hour", F.hour(F.col("tpep_pickup_datetime")))
-        .groupBy("hour", "passenger_count")
+        .filter(F.col("base_passenger_fare") > 0)
+        .withColumn("hour", F.hour(F.col("pickup_datetime")))
+        .groupBy("hour")
         .agg(
             F.count("*").alias("trip_count"),
-            F.avg("fare_amount").alias("avg_fare"),
-            F.avg("trip_distance").alias("avg_distance")
+            F.avg("base_passenger_fare").alias("avg_fare"),
+            F.avg("trip_miles").alias("avg_distance")
         )
         .orderBy("hour"))
 
