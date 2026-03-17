@@ -75,6 +75,24 @@ def analyze_revenue(df):
         )
         .orderBy("month"))
 
+# Module 3: Driver Compensation Breakdown
+def analyze_compensation(df):
+    """
+    Evaluate the relationship between passenger fare, driver pay, 
+    and regulatory levies across different platforms.
+    """
+    logger.info("Running Driver Compensation Breakdown Analysis...")
+    return (df
+        .filter(F.col("base_passenger_fare") > 0)
+        .groupBy("hvfhs_license_num")
+        .agg(
+            F.avg("base_passenger_fare").alias("avg_passenger_fare"),
+            F.avg("driver_pay").alias("avg_driver_pay"),
+            F.avg("congestion_surcharge").alias("avg_congestion_surcharge"),
+            F.avg("bcf").alias("avg_black_car_fund") # Assuming 'bcf' is standard in this dataset; CBD fee might not be present yet depending on dataset year
+        )
+        .orderBy("hvfhs_license_num"))
+
 # Router & Execution
 def run_analysis(df, task="all"):
     """
@@ -86,6 +104,8 @@ def run_analysis(df, task="all"):
         results["dispatch_analysis"] = analyze_dispatch(df)
     if task in ["revenue", "all"]:
         results["monthly_revenue"] = analyze_revenue(df)
+    if task in ["compensation", "all"]:
+        results["driver_compensation"] = analyze_compensation(df)
         
     return results
 
