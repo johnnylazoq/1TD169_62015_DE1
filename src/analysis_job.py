@@ -61,6 +61,20 @@ def analyze_dispatch(df):
         .agg(F.count("*").alias("trip_count"))
         .orderBy("hour", ascending=False))
 
+# Module 2: Monthly Revenue
+def analyze_revenue(df):
+    """
+    Aggregate total fares and tips to calculate monthly gross revenue.
+    """
+    logger.info("Running Economic Performance (Monthly Revenue)...")
+    return (df
+        .withColumn("month", F.month(F.col("pickup_datetime")))
+        .groupBy("month")
+        .agg(
+            F.sum(F.col("base_passenger_fare") + F.col("tips")).alias("monthly_gross_revenue")
+        )
+        .orderBy("month"))
+
 # Router & Execution
 def run_analysis(df, task="all"):
     """
@@ -70,6 +84,8 @@ def run_analysis(df, task="all"):
     
     if task in ["dispatch", "all"]:
         results["dispatch_analysis"] = analyze_dispatch(df)
+    if task in ["revenue", "all"]:
+        results["monthly_revenue"] = analyze_revenue(df)
         
     return results
 
