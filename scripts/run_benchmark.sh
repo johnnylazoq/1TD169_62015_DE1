@@ -1,16 +1,15 @@
 #!/bin/bash
-# Script to run the 3 scaling tests automatically
-
-# scripts/run_benchmark.sh
-#!/bin/bash
 # Automates the 1/2/3 worker scaling experiments
 
-INPUT="hdfs:///data/your_dataset"
-OUTPUT_BASE="hdfs:///results"
-FORMAT="csv"
-MASTER="spark://master-node:7077"
+INPUT="hdfs://g11-master:9000/nyc_taxi_data/weak_3GB/*.parquet"
+OUTPUT_BASE="hdfs://g11-master:9000/output_results/scaling"
+FORMAT="parquet"
+MASTER="spark://g11-master:7077"
 
 echo "=== SCALABILITY BENCHMARK ==="
+
+# Create the logs directory if it doesn't exist
+mkdir -p logs
 
 for WORKERS in 1 2 3; do
     echo "--- Running with $WORKERS worker(s) ---"
@@ -23,6 +22,7 @@ for WORKERS in 1 2 3; do
             --input  $INPUT \
             --output $OUTPUT_BASE/run_${WORKERS}workers \
             --format $FORMAT \
+            --task   all \
             --cores  2 \
             --memory 2g \
         2>&1 | tee logs/run_${WORKERS}workers.log
