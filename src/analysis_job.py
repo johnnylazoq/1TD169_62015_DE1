@@ -93,6 +93,21 @@ def analyze_compensation(df):
         )
         .orderBy("hvfhs_license_num"))
 
+# Module 4: Geographic Zone Analysis
+def analyze_zones(df):
+    """
+    Process congestion surcharge data to identify geographic zones with the 
+    highest fee accumulations and map high-traffic trip origins.
+    """
+    logger.info("Running Geographic Zone Analysis...")
+    return (df
+        .groupBy("PULocationID")
+        .agg(
+            F.sum("congestion_surcharge").alias("total_congestion_surcharge"),
+            F.count("*").alias("trip_volume")
+        )
+        .orderBy("total_congestion_surcharge", ascending=False))
+
 # Router & Execution
 def run_analysis(df, task="all"):
     """
@@ -106,6 +121,8 @@ def run_analysis(df, task="all"):
         results["monthly_revenue"] = analyze_revenue(df)
     if task in ["compensation", "all"]:
         results["driver_compensation"] = analyze_compensation(df)
+    if task in ["zones", "all"]:
+        results["geographic_zones"] = analyze_zones(df)
         
     return results
 
