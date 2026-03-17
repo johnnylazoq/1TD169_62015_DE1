@@ -108,6 +108,39 @@ def analyze_zones(df):
         )
         .orderBy("total_congestion_surcharge", ascending=False))
 
+# Module 5: Anomalous Rides (Outliers)
+def analyze_outliers(df):
+    """
+    Extract trip duration and speed features to identify data errors, 
+    unusually long trips, or impossible travel speeds.
+    """
+    logger.info("Running Anomalous Rides Feature Extraction...")
+    
+    # Calculate duration in minutes
+    df_features = df.withColumn(
+        "duration_minutes", 
+        (F.unix_timestamp("dropoff_datetime") - F.unix_timestamp("pickup_datetime")) / 60.0
+    )
+    
+    # Calculate speed and filter for extreme outliers
+    return (df_features
+        .withColumn(
+            "avg_speed_mph", 
+            F.when(F.col("duration_minutes") > 0, (F.col("trip_miles") / (F.col("duration_minutes") / 60.0)))
+             .otherwise(0)
+        )
+        .filter(
+            (F.col("duration_minutes") <= 1) | 
+            (F.col("duration_minutes") > 300) | 
+            (F.col("trip_miles") <= 0) | 
+            (F.col("avg_speed_mph") > 80)
+        )
+        .select(
+            "hvfhs_license_num", "pickup_datetime", "dropoff_datetime", 
+            "trip_miles", "duration_minutes", "avg_speed_mph", "base_passenger_fare"
+        )
+        .orderBy(F.col("avg_speed_mph").desc()))
+
 # Router & Execution
 def run_analysis(df, task="all"):
     """
@@ -123,6 +156,8 @@ def run_analysis(df, task="all"):
         results["driver_compensation"] = analyze_compensation(df)
     if task in ["zones", "all"]:
         results["geographic_zones"] = analyze_zones(df)
+    if task in ["outliers", "all"]:
+        results["anomalous_outliers"] = analyze_outliers(df)
         
     return results
 
