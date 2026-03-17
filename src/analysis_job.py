@@ -48,30 +48,26 @@ def load_data(spark, input_path, file_format="csv"):
     else:
         raise ValueError(f"Unsupported format: {file_format}")
 
-# Module 1: Dispatch Analysis
-def analyze_dispatch(df):
+def run_analysis(df):
     """
-    Identify daily peak traffic hours through hourly aggregation, 
-    mapping ride volume distributions across different dispatching bases.
+    Core analysis logic — adapt this to your dataset.
+    Example: NYC Taxi — avg fare by hour and passenger count.
     """
-    logger.info("Running Spatio-Temporal Dispatch Analysis...")
+    # HVFHV Schema adaptation: 
+    # - tpep_pickup_datetime -> pickup_datetime
+    # - fare_amount -> base_passenger_fare
+    # - trip_distance -> trip_miles
+    # - passenger_count does not exist in standard HVFHV data
     return (df
+        .filter(F.col("base_passenger_fare") > 0)
         .withColumn("hour", F.hour(F.col("pickup_datetime")))
-        .groupBy("hour", "dispatching_base_num")
-        .agg(F.count("*").alias("trip_count"))
-        .orderBy("hour", ascending=False))
-
-# Router & Execution
-def run_analysis(df, task="all"):
-    """
-    Core analysis logic — routes to the specific modular function.
-    """
-    results = {}
-    
-    if task in ["dispatch", "all"]:
-        results["dispatch_analysis"] = analyze_dispatch(df)
-        
-    return results
+        .groupBy("hour")
+        .agg(
+            F.count("*").alias("trip_count"),
+            F.avg("base_passenger_fare").alias("avg_fare"),
+            F.avg("trip_miles").alias("avg_distance")
+        )
+        .orderBy("hour"))
 
 def convert_to_parquet(spark, input_path, output_path):
     """Optional: Convert CSV/JSON to Parquet for faster subsequent reads."""
@@ -80,21 +76,15 @@ def convert_to_parquet(spark, input_path, output_path):
     df.write.mode("overwrite").parquet(output_path)
     logger.info(f"Saved Parquet to {output_path}")
 
-def benchmark(spark, input_path, output_path, file_format, task):
+def benchmark(spark, input_path, output_path, file_format):
     start = time.time()
 
     df = load_data(spark, input_path, file_format)
     record_count = df.count()
     logger.info(f"Loaded {record_count:,} records")
 
-    # result_dfs is now a dictionary of DataFrames
-    result_dfs = run_analysis(df, task)
-    
-    # Save each analysis to its own subfolder within the output path
-    for analysis_name, result_df in result_dfs.items():
-        specific_output_path = f"{output_path}/{analysis_name}"
-        logger.info(f"Writing {analysis_name} to {specific_output_path}")
-        result_df.write.mode("overwrite").csv(specific_output_path, header=True)
+    result = run_analysis(df)
+    result.write.mode("overwrite").csv(output_path, header=True)
 
     elapsed = time.time() - start
     logger.info(f"Job completed in {elapsed:.2f} seconds")
@@ -108,16 +98,14 @@ if __name__ == "__main__":
     parser.add_argument("--format",  default="csv",  help="csv | json | parquet")
     parser.add_argument("--cores",   default=2, type=int)
     parser.add_argument("--memory",  default="2g")
-    parser.add_argument("--task",    default="dispatch",  help="dispatch | all")
     args = parser.parse_args()
 
     spark = create_spark_session(executor_memory=args.memory, cores=args.cores)
-    elapsed, count = benchmark(spark, args.input, args.output, args.format, args.task)
+    elapsed, count = benchmark(spark, args.input, args.output, args.format)
 
     # Print summary for easy log scraping
     print(f"\n{'='*40}")
     print(f"BENCHMARK RESULT")
-    print(f"  Task      : {args.task.upper()}")
     print(f"  Time      : {elapsed:.2f}s")
     print(f"  Records   : {count:,}")
     print(f"  Cores/node: {args.cores}")
