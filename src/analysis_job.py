@@ -27,7 +27,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+# Done by Chandana
 def create_spark_session(app_name="DataEngProject", executor_memory="2g", cores=2):
     return (SparkSession.builder
         .appName(app_name)
@@ -37,6 +37,7 @@ def create_spark_session(app_name="DataEngProject", executor_memory="2g", cores=
         .config("spark.eventLog.enabled", "true")
         .getOrCreate())
 
+# Done by Chandana
 def load_data(spark, input_path, file_format="csv"):
     logger.info(f"Loading data from: {input_path}")
     if file_format == "csv":
@@ -48,6 +49,7 @@ def load_data(spark, input_path, file_format="csv"):
     else:
         raise ValueError(f"Unsupported format: {file_format}")
 
+#Done by Ryan
 # Module 1: Dispatch Analysis
 def analyze_dispatch(df):
     """
@@ -60,7 +62,7 @@ def analyze_dispatch(df):
         .groupBy("hour", "dispatching_base_num")
         .agg(F.count("*").alias("trip_count"))
         .orderBy("hour", ascending=False))
-
+#Done by ryan
 # Module 2: Monthly Revenue
 def analyze_revenue(df):
     """
@@ -74,7 +76,7 @@ def analyze_revenue(df):
             F.sum(F.col("base_passenger_fare") + F.col("tips")).alias("monthly_gross_revenue")
         )
         .orderBy("month"))
-
+# Done by JOhnny
 # Module 3: Driver Compensation Breakdown
 def analyze_compensation(df):
     """
@@ -93,6 +95,7 @@ def analyze_compensation(df):
         )
         .orderBy("hvfhs_license_num"))
 
+# Done by Mahajabeen
 # Module 4: Geographic Zone Analysis
 def analyze_zones(df):
     """
@@ -107,7 +110,7 @@ def analyze_zones(df):
             F.count("*").alias("trip_volume")
         )
         .orderBy("total_congestion_surcharge", ascending=False))
-
+# Done by Neha
 # Module 5: Anomalous Rides (Outliers)
 def analyze_outliers(df):
     """
@@ -141,6 +144,7 @@ def analyze_outliers(df):
         )
         .orderBy(F.col("avg_speed_mph").desc()))
 
+# Done by Neha
 # Router & Execution
 def run_analysis(df, task="all"):
     """
@@ -161,6 +165,7 @@ def run_analysis(df, task="all"):
         
     return results
 
+# Done by Chandana
 def convert_to_parquet(spark, input_path, output_path):
     """Optional: Convert CSV/JSON to Parquet for faster subsequent reads."""
     logger.info("Converting to Parquet...")
@@ -168,6 +173,7 @@ def convert_to_parquet(spark, input_path, output_path):
     df.write.mode("overwrite").parquet(output_path)
     logger.info(f"Saved Parquet to {output_path}")
 
+# Done By Ryan
 def benchmark(spark, input_path, output_path, file_format, task):
     start = time.time()
 
@@ -190,6 +196,7 @@ def benchmark(spark, input_path, output_path, file_format, task):
     return elapsed, record_count
 
 if __name__ == "__main__":
+    # Done by Chandana And Ryan
     parser = argparse.ArgumentParser()
     parser.add_argument("--input",   required=True,  help="HDFS input path")
     parser.add_argument("--output",  required=True,  help="HDFS output path")
