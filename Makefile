@@ -2,7 +2,7 @@ SPARK_MASTER = spark://g11-master:7077
 PYTHON_FILE = src/analysis_job.py
 INPUT_PATH = hdfs://g11-master:9000/nyc_taxi_data/weak_3GB/*.parquet
 OUTPUT_PATH = hdfs://g11-master:9000/user/ubuntu/analysis_output
-
+#DOne by Chendana
 # Spark execution resources
 EXECUTOR_MEMORY = 4G
 TOTAL_CORES = 4

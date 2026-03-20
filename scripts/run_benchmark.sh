@@ -1,5 +1,6 @@
 #!/bin/bash
 # Automates BOTH horizontal and vertical scaling experiments
+# Done by Ryan
 
 INPUT="hdfs://g11-master:9000/nyc_taxi_data/weak_3GB/*.parquet"
 OUTPUT_BASE="hdfs://g11-master:9000/output_results/scaling"

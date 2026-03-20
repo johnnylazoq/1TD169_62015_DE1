@@ -3,6 +3,7 @@
 #!/bin/bash
 # scripts/deploy.sh
 # Copies project code to the master node and distributes to workers
+# Done by Ryan
 
 set -e  # Exit on any error
 

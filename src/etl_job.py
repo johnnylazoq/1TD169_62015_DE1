@@ -7,6 +7,7 @@ from pyspark.sql import functions as F
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Done by Johnny
 def run_etl(spark, input_path, output_path):
     logger.info(f"Extracting raw data from {input_path}")
     
