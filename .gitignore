@@ -1,1 +1,8 @@
+venv/  #Done by Mahajabeen
+.venv/
 data/
+logs/
+spark-warehouse/
+__pycache__/
+*.log
+.DS_Store
